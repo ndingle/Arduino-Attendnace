@@ -1,39 +1,54 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO.Ports;
 using System.Management;
 
 namespace StudyAttendance
 {
+
+    public enum ArduinoSerialCommsStatus
+    {
+        //Good messages
+        OK = 0,
+        DUPLICATE_LOGIN,
+
+        //Bad messages
+        UNKNOWN_UID,
+        EXISTS_IN_DATABASE
+    }
+
+
     public class ArduinoSerialComms
     {
 
 
         private SerialPort _port;
+        private List<byte> _dataBuffer;
 
-        public delegate void DataReceivedHandler(byte[] bytes);
-        public event DataReceivedHandler DataReceived;
+        public static byte END_OF_PACKET_CHAR = 10;
 
-
-        public static byte NEWLINE_BYTE         = 10;
-        public static byte GOOD_MSG_BYTE        = 1;
-        public static byte BAD_MSG_BYTE         = 2;
-        public static byte DUPLICATE_MSG_BYTE   = 3;
-        public static byte ADMIN_MSG_BYTE       = 4;
+        public delegate void TagReceivedHandler(uint uid);
+        public event TagReceivedHandler TagReceived;
 
 
+        /// <summary>
+        /// Constructor function, that takes the baud rate.
+        /// </summary>
+        /// <param name="baud">The baud rate to connect at.</param>
         public ArduinoSerialComms(int baud)
         {
             Init(baud);
         }
 
 
+        /// <summary>
+        /// Used as the initial connect from the constructor.
+        /// </summary>
+        /// <param name="baud">The baud rate to connect at.</param>
         void Init(int baud)
         {
 
+            _dataBuffer = new List<byte>();
             string comPort = FindConnectedArduino();
             if (comPort == "")
                 return;
@@ -43,6 +58,11 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Finds a connected Arduino and returns the COM port. 
+        /// WARNING: Will only return the first Arduino, perhaps I need to add a skip paramter... nah.
+        /// </summary>
+        /// <returns>Ze COM port an Arduino is connected to.</returns>
         string FindConnectedArduino()
         {
 
@@ -54,11 +74,18 @@ namespace StudyAttendance
                 String portName = manObj["Name"].ToString();
                 if (portName.Contains("Arduino")) return manObj["DeviceID"].ToString();
             }
+
             return "";
 
         }
 
 
+        /// <summary>
+        /// Attempt to open the given PORT at the given baud rate. 
+        /// </summary>
+        /// <param name="comPort">Ze COM Port.</param>
+        /// <param name="baud">Ze Baud rate.</param>
+        /// <returns>True if succeeded, false if failed.</returns>
         bool OpenPort(string comPort, int baud)
         {
 
@@ -66,6 +93,7 @@ namespace StudyAttendance
             try
             {
                 _port.Open();
+                if (_port.BytesToRead > 0) _port.ReadLine();
                 _port.DataReceived += DataReceivedEvent;
                 return true;
             }
@@ -79,19 +107,76 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Event that is used for the basic reading of bytes and uid information from an Arduino
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         void DataReceivedEvent(object sender, SerialDataReceivedEventArgs e)
         {
 
-            //Collect the data
-            byte[] buffer = new byte[_port.BytesToRead];
-            _port.Read(buffer, 0, _port.BytesToRead);
+            try
+            {
+                //Collect the data
+                int newlineIndex = -1;
 
-            //Pass the data onward
-            DataReceived(buffer);
+                //TODO: Add a timeout
+                while (newlineIndex == -1)
+                {
+
+                    byte[] buffer = new byte[_port.BytesToRead];
+                    _port.Read(buffer, 0, _port.BytesToRead);
+                    _dataBuffer.AddRange(buffer);
+
+                    newlineIndex = _dataBuffer.IndexOf(END_OF_PACKET_CHAR);
+
+                }
+
+                uint value = 0;
+
+                //If we have a newline character, process the tag
+                if (newlineIndex > -1)
+                {
+                    value = ConvertTag(_dataBuffer.GetRange(0, newlineIndex).ToArray());
+
+                    //Pass the data onward
+                    TagReceived(value);
+                }
+
+                //Take away the stuff to the right of the newline char
+                if (_dataBuffer.Count > newlineIndex + 1)
+                    _dataBuffer = _dataBuffer.GetRange(newlineIndex + 1, _dataBuffer.Count - (newlineIndex + 1));
+                else
+                    _dataBuffer.Clear();
+
+            }
+            //TODO: Look at the error handling of this
+            catch { }
 
         }
 
 
+        /// <summary>
+        /// This function converts raw data from byte[] to its uint equivalent
+        /// </summary>
+        /// <param name="data">The array of byte[] to convert</param>
+        /// <returns>The uint version of awesomeness</returns>
+        uint ConvertTag(byte[] data)
+        {
+            
+            //Depending on the system setup, we need to reverse the array first
+            if (BitConverter.IsLittleEndian)
+                Array.Reverse(data);
+
+            return BitConverter.ToUInt32(data, 0);
+
+        }
+
+
+        /// <summary>
+        /// Price check on connected Arduino.
+        /// </summary>
+        /// <returns>True if port is not null and connected. False for other things.</returns>
         public bool IsOpen()
         {
 
@@ -103,6 +188,11 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Sending data down the pipe.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
         public bool SendData(byte[] data)
         {
 

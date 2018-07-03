@@ -77,16 +77,26 @@ namespace StudyAttendance
         }
 
 
-        public void NonQuery(string query)
+        public bool NonQuery(string query)
         {
 
             if (!OpenConnection())
-                return;
+                return false;
 
+            bool result = true;
             MySqlCommand cmd = new MySqlCommand(query, _connection);
-            cmd.ExecuteNonQuery();
+
+            try
+            {
+                cmd.ExecuteNonQuery();
+            }
+            catch
+            {
+                result = false;
+            }
 
             CloseConnection();
+            return result;
 
         }
 
@@ -105,24 +115,23 @@ namespace StudyAttendance
         }
 
 
-        public int Scalar(string query)
+        public object Scalar(string query)
         {
 
             if (!OpenConnection())
                 return -1;
 
             MySqlCommand cmd = new MySqlCommand(query, _connection);
-            int result = -1;
+            object value = null;
 
             try
             {
-                object value = cmd.ExecuteScalar();
-                if (value != null) result = (int)value;
+                value = cmd.ExecuteScalar();
             }
             catch { }
 
             CloseConnection();
-            return result;
+            return value;
 
         }
 

@@ -27,7 +27,8 @@ namespace StudyAttendance
         AttendanceDatabase database = new AttendanceDatabase();
         ArduinoSerialComms ardunio;
 
-        List<byte> dataBuffer = new List<byte>();
+        List<Student> students = new List<Student>();
+
 
         public MainWindow()
         {
@@ -38,69 +39,165 @@ namespace StudyAttendance
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
 
+            //Setup the student list and sort it 
+            LoadStudents();
+
+            //Setup the connection to the Arduino
             ardunio = new ArduinoSerialComms(9600);
-            ardunio.DataReceived += DataReceivedOnPort;
-            Hide();
+            ardunio.TagReceived += TagReceived;
+
+            //UNDONE: This
+            ShowAddStudent();
 
         }
 
-        void DataReceivedOnPort(byte[] data)
+
+        void LoadStudents()
         {
-            dataBuffer.AddRange(data);
-            int newlineIndex = dataBuffer.IndexOf(ArduinoSerialComms.NEWLINE_BYTE);
-
-            if (newlineIndex > -1)
-                ProcessTag(dataBuffer.GetRange(0, newlineIndex - 1).ToArray());
-
-            //Take away the stuff to the right of the newline char
-            if (dataBuffer.Count > newlineIndex + 1)
-                dataBuffer = dataBuffer.GetRange(newlineIndex + 1, dataBuffer.Count - (newlineIndex + 1));
-            else
-                dataBuffer.Clear();
+            //Load from the database, sort them by last name and then refresh the list
+            students = database.GetAllStudents();
+            students.Sort(Compare);
+            lstStudents.ItemsSource = students;
         }
 
 
-        void ProcessTag(byte[] tag)
+        public int Compare(Student x, Student y)
         {
-            //TODO: Make this good
-            Debug.Write("Found tag: " + BitConverter.ToString(tag));
+            return string.Compare(x.lastname, y.lastname);
+        }
 
-            //Find the student in the database
-            ushort uid = BitConverter.ToUInt16(tag, 0);
 
-            //Check for built in tags
-            if (uid == 3392)
-            {
-                //Admin mode! Stupid threading, show the window
-                Dispatcher.BeginInvoke(new ThreadStart(() => Show()));
-                SendReply(ArduinoSerialComms.ADMIN_MSG_BYTE);
-                return;
-            }
+        void TagReceived(uint uid)
+        {
+            Login(uid);
+        }
 
+
+        void Login(uint uid)
+        {
+
+            // Are they in the database?
             Student student = database.FindStudentByUID(uid);
 
-            //Determine what was returned
-            bool added = false;
+            //If we found them, then add them (if they haven't already signed in)
             bool found = (student != null);
-            Debug.WriteLine($" = {found}");
-            if (found) added = database.AddAttendance(student, false);
-            
-            //Send a message back to arduino
+            bool added = false;
+            if (found) added = database.AddAttendance(student, true);
+
             if (found && added)
-                SendReply(ArduinoSerialComms.GOOD_MSG_BYTE);
+                ShowPopup($"Welcome {student.ToString()}", Brushes.PaleGreen);
             else if (found && !added)
-                SendReply(ArduinoSerialComms.DUPLICATE_MSG_BYTE);
-            else
-                SendReply(ArduinoSerialComms.BAD_MSG_BYTE);
+                ShowPopup($"You're already here {student.ToString()}", Brushes.PaleGreen);
+            else if (!found)
+                ShowPopup($"FOB not registered.", Brushes.OrangeRed);
 
         }
+
+
+        //void ProcessTag(byte[] tag)
+        //{
+
+
+
+        //    Debug.Write("Found tag: " + BitConverter.ToString(tag));
+
+        //    //Find the student in the database
+        //    uint uid = BitConverter.ToUInt32(tag, 0);
+
+        //    //Check for built in tags
+        //    //if (uid == 3392)
+        //    //{
+        //    //    //Admin mode! Stupid threading, show the window
+        //    //    //Dispatcher.BeginInvoke(new ThreadStart(() => Show()));
+        //    //    SendReply(ArduinoSerialComms.ADMIN_MSG_BYTE);
+        //    //    return;
+        //    //}
+
+
+        //    //Determine what was returned
+        //    bool added = false;
+        //    bool found = (student != null);
+        //    Debug.WriteLine($" = {found}");
+        //    if (found) added = database.AddAttendance(student, true);
+
+        //    //Send a message back to arduino
+        //    if (found && added)
+        //    {
+        //        SendReply(ArduinoSerialComms.GOOD_MSG_BYTE);
+        //        ShowPopup($"Welcome {student.ToString()}", Brushes.PaleGreen);
+        //    }
+        //    else if (found && !added)
+        //    {
+        //        SendReply(ArduinoSerialComms.DUPLICATE_MSG_BYTE);
+        //        ShowPopup($"You're already here {student.ToString()}", Brushes.PaleGreen);
+        //    }
+        //    else
+        //    {
+        //        SendReply(ArduinoSerialComms.BAD_MSG_BYTE);
+        //        ShowPopup($"Can't recognise FOB.", Brushes.OrangeRed);
+        //    }
+
+        //}
 
 
         void SendReply(byte message)
         {
-            ardunio.SendData(new byte[] { message, ArduinoSerialComms.NEWLINE_BYTE });
+            ardunio.SendData(new byte[] { message, ArduinoSerialComms.END_OF_PACKET_CHAR });
         }
 
+
+        void ShowPopup(string message, Brush colour)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                PopupWindow popup = new PopupWindow(message, colour, 2500);
+                popup.Owner = this;
+                popup.ShowDialog();
+            }));
+            
+        }
+
+
+        void ShowAddStudent()
+        {
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+
+                //Remove the tag received event for this form
+                ardunio.TagReceived -= TagReceived;
+
+                AddStudent addStudent = new AddStudent(database, ardunio);
+                addStudent.Owner = this;
+                bool? result = addStudent.ShowDialog();
+
+                //Reattach the arduino event
+                ardunio.TagReceived += TagReceived;
+
+                //Check if we got a result for the adding
+                if (result.Value)
+                {
+                    ShowPopup("Student added!", Brushes.ForestGreen);
+                    LoadStudents();
+                }
+
+
+            }));
+        }
+
+
+        private void btnLogin_Click(object sender, RoutedEventArgs e)
+        {
+
+            //I don't think they could ever not have something, but better safe than sorry
+            if (lstStudents.SelectedItem == null)
+                return;
+
+            //Log them in then
+            Student selectedStudent = (Student)lstStudents.SelectedItem;
+            Login(selectedStudent.uid);
+
+        }
 
     }
 }
