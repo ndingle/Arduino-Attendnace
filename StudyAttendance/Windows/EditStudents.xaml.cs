@@ -91,7 +91,70 @@ namespace StudyAttendance
             RefreshStudents();
         }
 
-        
+
+        private void btnRemoveUID_Click(object sender, RoutedEventArgs e)
+        {
+
+            if (lsvStudents.SelectedItem == null)
+                return;
+
+            if (MessageBox.Show($"Do you want to remove {lsvStudents.SelectedItems.Count} UIDs?", "UID Removal", MessageBoxButton.YesNo) == MessageBoxResult.No)
+                return;
+
+            foreach (var obj in lsvStudents.SelectedItems)
+            {
+                var student = (Student)obj;
+                student.uid = 0;
+                database.EditStudent(student);
+            }
+
+            RefreshStudents();
+
+        }
+
+
+        private void btnFOBs_Click(object sender, RoutedEventArgs e)
+        {
+            if (lsvStudents.SelectedItem == null)
+                return;
+
+            foreach (var obj in lsvStudents.SelectedItems)
+            {
+                var student = (Student)obj;
+                AddFOB(student);
+            }
+
+            RefreshStudents();
+
+        }
+
+
+        /// <summary>
+        /// Prompts the user to add a FOB for the given user
+        /// </summary>
+        /// <param name="student">The student to add the new FOB</param>
+        void AddFOB(Student student)
+        {
+
+            PopupWindow popup = new PopupWindow($"Scan FOB to add to {student.ToString()}", Brushes.Azure, 0, arduino);
+            popup.Owner = this;
+            popup.ShowDialog();
+            uint uid = popup.UIDResult;
+
+            //No result = get out early
+            if (uid == 0)
+                return;
+
+            //Check if it exists, otherwise add it to the student
+            if (!database.DoesUIDExist(uid))
+            {
+                student.uid = uid;
+                database.EditStudent(student);
+            }
+
+        }
+
+
         /// <summary>
         /// Actives or deactives student accounts.
         /// </summary>
@@ -178,7 +241,6 @@ namespace StudyAttendance
             students.Sort(Student.Compare);
             lsvStudents.ItemsSource = students;
         }
-
 
     }
 }

@@ -97,6 +97,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Compile Include="Animations\GridLengthAnimation.cs" />
     <Compile Include="Windows\EditStudents.xaml.cs">
       <DependentUpon>EditStudents.xaml</DependentUpon>
     </Compile>

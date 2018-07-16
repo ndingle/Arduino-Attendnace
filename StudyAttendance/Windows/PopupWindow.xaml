@@ -68,5 +68,12 @@
                    TextAlignment="Center">
             Message goes in here
         </TextBlock>
+        <Button x:Name="btnCancel"
+                Grid.Column="1"
+                Grid.Row="2"
+                Margin="5"
+                IsCancel="True"
+                Visibility="Hidden"
+                Click="btnCancel_Click">_Cancel</Button>
     </Grid>
 </Window>

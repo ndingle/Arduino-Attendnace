@@ -40,13 +40,13 @@
             <RowDefinition />
         </Grid.RowDefinitions>
 
-        <ListView x:Name="lsvStudents" SelectionMode="Multiple">
+        <ListView x:Name="lsvStudents">
             <ListView.Resources>
 
                 <Style TargetType="ListViewItem">
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding uidcolumn}" Value="Not set">
-                            <Setter Property="Background" Value="Orange" />
+                            <Setter Property="Background" Value="BurlyWood" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding active}" Value="False">
                             <Setter Property="Background" Value="LightGray" />
@@ -97,9 +97,8 @@
         <StackPanel Grid.Column="1" Grid.Row="0">
             <Button x:Name="btnAdd" Click="btnAdd_Click">Add</Button>
             <Button x:Name="btnBulk" Click="btnBulk_Click">Bulk add</Button>
-            <Button x:Name="btnFOBs">Add FOB</Button>
-            <Button x:Name="btnBulkFOBs">Bulk FOBs</Button>
-            <Button x:Name="btnRemoveUID">Remove UID</Button>
+            <Button x:Name="btnFOBs" Click="btnFOBs_Click">Add FOB</Button>
+            <Button x:Name="btnRemoveUID" Click="btnRemoveUID_Click">Remove UID</Button>
             <CheckBox x:Name="chkShowActive" Checked="chkShowActive_Checked" Unchecked="chkShowActive_Unchecked" IsChecked="true">
                 <CheckBox.LayoutTransform>
                     <ScaleTransform ScaleX="2" ScaleY="2" />

@@ -4,51 +4,114 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:StudyAttendance"
-        xmlns:System="clr-namespace:System;assembly=mscorlib" x:Class="StudyAttendance.MainWindow"
+        xmlns:System="clr-namespace:System;assembly=mscorlib"
+    xmlns:Timeline="http://schemas.microsoft.com/netfx/2009/xaml/presentation" x:Class="StudyAttendance.MainWindow"
         mc:Ignorable="d"
         Title="Kelso Study Login" Height="450" Width="800" Loaded="Window_Loaded" WindowState="Maximized">
 
     <Window.Resources>
+
+        <Timeline:Duration x:Key="AnimationSpeed">0:0:0.3</Timeline:Duration>
+
         <Style TargetType="{x:Type ListBoxItem}">
             <Setter Property="FontSize" Value="48" />
             <Setter Property="Padding" Value="5,5,5,5" />
         </Style>
+
+        <Storyboard x:Key="ShowSubjects">
+            <local:GridLengthAnimation
+            BeginTime="0:0:0"
+            Duration="{StaticResource AnimationSpeed}"
+            From="0*"
+            Storyboard.TargetName="SubjectsColumn"
+            Storyboard.TargetProperty="Width"
+            To="1*" />
+        </Storyboard>
+
+        <Storyboard x:Key="HideSubjects">
+            <local:GridLengthAnimation
+            BeginTime="0:0:0"
+            Duration="{StaticResource AnimationSpeed}"
+            From="1*"
+            Storyboard.TargetName="SubjectsColumn"
+            Storyboard.TargetProperty="Width"
+            To="0*" />
+        </Storyboard>
+
+        <Storyboard x:Key="ShowStudents">
+            <local:GridLengthAnimation
+            BeginTime="0:0:0"
+            Duration="{StaticResource AnimationSpeed}"
+            From="0*"
+            Storyboard.TargetName="StudentsColumn"
+            Storyboard.TargetProperty="Width"
+            To="1*" />
+        </Storyboard>
+
+        <Storyboard x:Key="HideStudents">
+            <local:GridLengthAnimation
+            BeginTime="0:0:0"
+            Duration="{StaticResource AnimationSpeed}"
+            From="1*"
+            Storyboard.TargetName="StudentsColumn"
+            Storyboard.TargetProperty="Width"
+            To="0*" />
+        </Storyboard>
+        
     </Window.Resources>
 
     <Grid>
 
-        <ListBox x:Name="lstStudents" HorizontalContentAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="StudentsColumn" Width="1*" />
+            <ColumnDefinition x:Name="SubjectsColumn" Width="0*"/>
+        </Grid.ColumnDefinitions>
 
-            <ListBox.ItemTemplate>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+        </Grid.RowDefinitions>
 
-                <DataTemplate>
+        <Grid x:Name="studentGrid" Grid.Column="0" Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0*"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
 
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="7*" />
-                            <ColumnDefinition Width="0.75*"/>
-                        </Grid.ColumnDefinitions>
+            <ListBox x:Name="lstStudents" HorizontalContentAlignment="Stretch" Grid.ColumnSpan="2">
 
-                        <Grid.RowDefinitions>
-                            <RowDefinition />
-                        </Grid.RowDefinitions>
+                <ListBox.ItemTemplate>
 
-                        <TextBlock Grid.Column="0" Text="{Binding}" />
-                        <Button x:Name="btnLogin" Grid.Column="1" Content="🚶" Visibility="Hidden" Click="btnLogin_Click"/>
+                    <DataTemplate>
 
-                    </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="7*" />
+                                <ColumnDefinition Width="0.75*"/>
+                            </Grid.ColumnDefinitions>
 
-                    <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding RelativeSource=
-                        {RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsSelected}" Value="True">
-                            <Setter TargetName="btnLogin" Property="Visibility" Value="Visible"/>
-                        </DataTrigger>
-                    </DataTemplate.Triggers>
-                    
-                </DataTemplate>
-            </ListBox.ItemTemplate>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
 
-        </ListBox>
+                            <TextBlock Grid.Column="0" Text="{Binding}" />
+                            <Button x:Name="btnLogin" Grid.Column="1" Content="🚶" Visibility="Hidden" Click="btnLogin_Click"/>
+
+                        </Grid>
+
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}, Mode=FindAncestor}}" Value="True">
+                                <Setter TargetName="btnLogin" Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+
+            </ListBox>
+
+        </Grid>
+
+        <Grid x:Name="subjectGrid" Grid.Column="1" Grid.Row="0" Background="Red"/>
 
     </Grid>
 </Window>

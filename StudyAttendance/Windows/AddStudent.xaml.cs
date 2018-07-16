@@ -15,6 +15,7 @@ using System.Windows.Shapes;
 
 namespace StudyAttendance
 {
+
     /// <summary>
     /// Interaction logic for AddStudent.xaml
     /// </summary>

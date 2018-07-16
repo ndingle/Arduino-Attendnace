@@ -25,15 +25,29 @@ namespace StudyAttendance
         string message = "";
         Brush backgroundColour = Brushes.White;
         float timeout = 0;
+        ArduinoSerialComms arduino;
+
+        public uint UIDResult = 0;
+
 
         public PopupWindow(string message,
                            Brush backgroundColour,
-                           float timeout)
+                           float timeout,
+                           ArduinoSerialComms arduino = null)
         {
+
             InitializeComponent();
             this.message = message;
             this.backgroundColour = backgroundColour;
             this.timeout = timeout;
+
+            //If we have an arduino to talk to then, setup the event
+            if (arduino != null)
+            {
+                this.arduino = arduino;
+                arduino.TagReceived += TagReceived;
+            }
+
         }
 
 
@@ -51,11 +65,45 @@ namespace StudyAttendance
             //Using the constructor settings, set the window up
             txbMessage.Text = message;
             brdColours.Background = backgroundColour;
-            Task.Delay(TimeSpan.FromMilliseconds(timeout)).ContinueWith(_ =>
+            
+            //If we are given a timeout value, then we fadeout
+            if (timeout > 0)
             {
-                Dispatcher.BeginInvoke(new ThreadStart(() => Close()));
+                Task.Delay(TimeSpan.FromMilliseconds(timeout)).ContinueWith(_ =>
+                {
+                    Dispatcher.BeginInvoke(new ThreadStart(() => Close()));
+                });
             }
-            );
+            else
+                btnCancel.Visibility = Visibility.Visible;
+            
         }
+
+
+        private void btnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            if (arduino != null)
+                arduino.TagReceived -= TagReceived;
+
+            Close();
+        }
+
+
+        /// <summary>
+        /// The receiver function used to handle arduino communication for UID scanning
+        /// </summary>
+        /// <param name="uid">The uid received</param>
+        void TagReceived(uint uid)
+        {
+            UIDResult = uid;
+
+            //We done, disconnect and close window
+            Dispatcher.BeginInvoke(new ThreadStart(() => {
+                arduino.TagReceived -= TagReceived;
+                Close();
+            }));
+
+        }
+
     }
 }
