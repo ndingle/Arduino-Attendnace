@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:StudyAttendance"
         mc:Ignorable="d"
-        Title="Add New Student" Height="451.038" Width="386.851" Closing="Window_Closing">
+        Title="Add New Student" Height="654.384" Width="452.83">
 
     <Window.Resources>
         
@@ -39,12 +39,15 @@
             <RowDefinition Height="2*" />
             <RowDefinition Height="1*" />
             <RowDefinition Height="2*" />
-            <RowDefinition Height="1.5*" />
+            <RowDefinition Height="1*" />
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="1*" />
+            <RowDefinition Height="2*" />
             <RowDefinition Height="1.5*" />
             <RowDefinition Height="3*" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" 
+        <TextBlock x:Name="txbTitle" Grid.Row="0" 
                    Grid.Column="0" 
                    Grid.ColumnSpan="2"
                    HorizontalAlignment="Center" 
@@ -73,9 +76,28 @@
                  Grid.ColumnSpan="2"
                  Grid.Column="0" TabIndex="2" MaxLength="50"></TextBox>
 
+        <TextBlock Grid.Row="5"
+                   Grid.Column="0"
+                   Grid.ColumnSpan="2"
+                   VerticalAlignment="Bottom">Oasis ID</TextBlock>
+
+        <TextBox x:Name="txtOasisID"
+                 Grid.Row="6"
+                 Grid.ColumnSpan="2"
+                 Grid.Column="0" TabIndex="2" MaxLength="50" PreviewTextInput="txtOasisID_PreviewTextInput"/>
+
+        <TextBlock Grid.Row="7"
+                   Grid.Column="0"
+                   Grid.ColumnSpan="2"
+                   VerticalAlignment="Bottom">Finish Year</TextBlock>
+
+        <TextBox x:Name="txtFinishYear"
+                 Grid.Row="8"
+                 Grid.ColumnSpan="2"
+                 Grid.Column="0" TabIndex="2" MaxLength="50" PreviewTextInput="txtFinishYear_PreviewTextInput"/>
+
         <TextBlock x:Name="txbUID"
-                   Grid.Row="5"
-                   Grid.RowSpan="2"
+                   Grid.Row="9"
                    Grid.Column="0" 
                    Grid.ColumnSpan="2" 
                    Text="Tap FOB to set UID" 
@@ -86,12 +108,12 @@
                    TextWrapping="Wrap"/>
 
         <Button x:Name="btnSave"
-                Grid.Row="7"
+                Grid.Row="10"
                 Grid.Column="0"
                 IsDefault="True" TabIndex="4" Click="btnSave_Click">_Save</Button>
 
         <Button x:Name="btnSaveNext"
-                Grid.Row="7"
+                Grid.Row="10"
                 Grid.Column="1"
                 IsDefault="True" TabIndex="4" Click="btnSaveNext_Click">Save and Next</Button>
     </Grid>

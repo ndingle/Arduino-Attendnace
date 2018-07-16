@@ -7,10 +7,7 @@ namespace StudyAttendance
     public class AttendanceDatabase
     {
 
-        
-        const uint UID_MIN = 200;                //Constants used for minimum UID value generation
-        const uint UID_MAX = 4294967294;         //Constants used for maximum UID value generation
-
+       
         MySqlDb db = new MySqlDb("localhost", "study", "root", "");
 
 
@@ -20,19 +17,26 @@ namespace StudyAttendance
         /// <returns>
         /// A bloody big list if you're not careful.
         /// </returns>
-        public List<Student> GetAllStudents()
+        public List<Student> GetAllStudents(bool activeOnly = true)
         {
 
             List<Student> results = new List<Student>();
+            string q = "SELECT * FROM students";
 
-            MySqlDataReader reader = db.Query("SELECT * FROM students");
+            if (activeOnly) q += " WHERE active=1";
+
+            MySqlDataReader reader = db.Query(q);
+
 
             while (reader.Read())
             {
                 Student newStudent = new Student(reader.GetInt32("id"),
                                                  reader.GetUInt32("uid"),
+                                                 reader.GetUInt32("oasisid"),
                                                  reader.GetString("firstname"),
-                                                 reader.GetString("lastname"));
+                                                 reader.GetString("lastname"),
+                                                 reader.GetUInt16("finishyear"),
+                                                 reader.GetBoolean("active"));
                 results.Add(newStudent);
             }
 
@@ -62,16 +66,30 @@ namespace StudyAttendance
             {
                 reader.Read();
                 result = new Student(reader.GetInt32("id"),
-                                         reader.GetUInt32("uid"),
-                                         reader.GetString("firstname"),
-                                         reader.GetString("lastname"));
-                
+                                    reader.GetUInt32("uid"),
+                                    reader.GetUInt32("oasisid"),
+                                    reader.GetString("firstname"),
+                                    reader.GetString("lastname"),
+                                    reader.GetUInt16("finishyear"),
+                                    reader.GetBoolean("active"));
+
             }
 
             reader.Close();
             db.CloseConnection();
             return result;
 
+        }
+
+
+        /// <summary>
+        /// If there is an id, then the student's details gets edited to the details provided.
+        /// </summary>
+        /// <param name="student">Provides the id and student details to edit</param>
+        /// <returns>True = it worked, False = no id or something worse.</returns>
+        public bool EditStudent(Student student)
+        {
+            return db.NonQuery($"UPDATE students SET firstname='{student.firstname}', lastname='{student.lastname}', finishyear={student.finishyear}, uid={student.uid}, oasisid={student.oasisid} WHERE id={student.id}");
         }
 
 
@@ -86,7 +104,7 @@ namespace StudyAttendance
         public bool AttendanceExistsToday(Student student)
         {
 
-            MySqlDataReader reader = db.Query($"SELECT * FROM attendance WHERE DATE(attendance.datetime) = DATE(NOW()) AND studentid={student.id}");
+            MySqlDataReader reader = db.Query($"SELECT id FROM attendance WHERE DATE(attendance.datetime) = DATE(NOW()) AND studentid={student.id}");
             bool result = (reader != null && reader.HasRows);
             reader.Close();
             db.CloseConnection();
@@ -120,10 +138,9 @@ namespace StudyAttendance
         /// <summary>
         /// Checks to see if the uid passed is associated with an existing student
         /// </summary>
-        /// <param name="uid">The student's... uid.</param>
+        /// <param name="uid">UID to look for</param>
         /// <returns>
-        /// True = it's there don't touch it
-        /// False = not there, go for gold
+        /// True = It's already used, don't touch it. False = not there, go for gold.
         /// </returns>
         public bool DoesUIDExist(uint uid)
         {
@@ -131,56 +148,50 @@ namespace StudyAttendance
         }
 
 
-
         /// <summary>
-        /// This function is used to produce a new UID used for adding students
-        /// 
-        /// Function works by randomising between 100 - 65525 because:
-        ///     0-99        = reserved for status bytes, probably won't cause problems, but why risk it
-        ///     100-65525   = potential tag UIDs
-        ///     65526-65535 = reserved for admin tags
+        /// Checks to see if the oasis id passed is associated with an existing student
         /// </summary>
+        /// <param name="oasisId">Oasis Id to look for</param>
         /// <returns>
-        /// 0 = unable to produce random uid
-        /// otherwise = you're good to go
+        /// True = It's already there. False = not there, go for gold.
         /// </returns>
-        [Obsolete("This function produces a random UID, which isn't required by the system anymore.")]
-        public uint GetRandomUID()
+        public bool DoesOasisIDExist(uint oasisId)
         {
-
-            Random random = new Random();
-            int attempts = 0;
-            int maxAttempts = 100;          //TODO: Consider if this should be a constant
-            uint uid = 0;
-
-            //Create a random uid until we get a unique one
-            do
-            {
-                //Thanks https://stackoverflow.com/questions/17080112/generate-random-uint
-                uint thirtyBits = (uint)random.Next(1 << 30);
-                uint twoBits = (uint)random.Next(1 << 2);
-                uid = (thirtyBits << 2) | twoBits;
-                attempts++;
-            } while (DoesUIDExist(uid) && attempts < maxAttempts);
-
-            //Error handling at its finest, 0 means bad right?
-            if (attempts >= maxAttempts)
-                return 0;
-
-        
-            return uid;
-
+            return (Convert.ToInt32(db.Scalar($"SELECT COUNT(oasisid) FROM students WHERE oasisid={oasisId}")) > 0);
         }
 
 
         /// <summary>
         /// Adds a new student to the students table. Note: Allows duplicate students of the same name.
         /// </summary>
-        /// <param name="student">The student to be added. MUST HAVE UNIQUE UID.</param>
+        /// <param name="student">The student to be added. MUST HAVE UNIQUE UID AND OASISID.</param>
         /// <returns>If it worked or not.</returns>
         public bool AddStudent(Student student)
         {
-            return db.NonQuery($"INSERT INTO students(firstname, lastname, uid) VALUES('{student.firstname}', '{student.lastname}', {student.uid})");
+            return db.NonQuery($"INSERT INTO students(uid, oasisid, firstname, lastname, finishyear) VALUES({student.uid}, {student.oasisid}, '{student.firstname}', '{student.lastname}', {student.finishyear})");
+        }
+
+
+        /// <summary>
+        /// Sets student's account to active or not.
+        /// </summary>
+        /// <param name="student">Student account to deactive.</param>
+        /// <param name="value">Set the student acitve or not.</param>
+        public bool SetActive(Student student, bool value)
+        {
+            return SetActive(student.id, value);
+        }
+
+
+        /// <summary>
+        /// Sets student's account to active or not.
+        /// </summary>
+        /// <param name="id">ID of the student</param>
+        /// <param name="value">Set the student acitve or not.</param>
+        /// <returns></returns>
+        public bool SetActive(int id, bool value)
+        {
+            return db.NonQuery($"UPDATE students SET active={value} WHERE id={id}");
         }
 
 

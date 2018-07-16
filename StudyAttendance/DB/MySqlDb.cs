@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using MySql.Data.MySqlClient;
+﻿using MySql.Data.MySqlClient;
 
 namespace StudyAttendance
 {
+
+    /// <summary>
+    /// A class used by other classes for raw database communication. 
+    /// </summary>
     class MySqlDb
     {
 
@@ -15,6 +17,13 @@ namespace StudyAttendance
         private MySqlConnection _connection;
 
 
+        /// <summary>
+        /// Constructor... mate. Send me the server, database, username and password and I'll break in.
+        /// </summary>
+        /// <param name="server">Where is the database?</param>
+        /// <param name="database">What's the database called?</param>
+        /// <param name="uid">What's your username?</param>
+        /// <param name="password">What's the key?</param>
         public MySqlDb(string server,
                        string database,
                        string uid,
@@ -29,18 +38,29 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Creates the connection to the database, used only by the constructor
+        /// </summary>
         void Initialise()
         {
             _connection = new MySqlConnection(GetConnectionString());
         }
 
 
+        /// <summary>
+        /// Generates the connection string, really I made this function for abstraction.
+        /// </summary>
+        /// <returns></returns>
         string GetConnectionString()
         {
             return $"SERVER={_server};DATABASE={_database};UID={_uid};PASSWORD={_password};SSLMODE=0;";
         }
 
 
+        /// <summary>
+        /// Opens the connection to the database.
+        /// </summary>
+        /// <returns>True, connection was established. False, no connection made.</returns>
         public bool OpenConnection()
         {
 
@@ -49,7 +69,7 @@ namespace StudyAttendance
                 _connection.Open();
             }
             //TODO: Add error handling
-            catch (MySqlException ex)
+            catch
             {
                 return false;
             }
@@ -59,6 +79,10 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Closes the connection to the database.
+        /// </summary>
+        /// <returns>True, the connection was closed. False, connection couldn't be closed (is that good?!).</returns>
         public bool CloseConnection()
         {
 
@@ -67,7 +91,7 @@ namespace StudyAttendance
                 _connection.Close();
             }
             //TODO: Add error handling
-            catch (MySqlException ex)
+            catch 
             {
                 return false;
             }
@@ -77,6 +101,11 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Performs a query with no expected return from the database. No error returns yet.
+        /// </summary>
+        /// <param name="query">The query string to be executed</param>
+        /// <returns>True, if the query was executed correctly. False, something failed - either connection didn't open or the query was wrong.</returns>
         public bool NonQuery(string query)
         {
 
@@ -101,6 +130,11 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Performs a query with an expected return from the database.
+        /// </summary>
+        /// <param name="query">The query string to be executed</param>
+        /// <returns>Data reader to read the values from.</returns>
         public MySqlDataReader Query(string query)
         {
 
@@ -115,6 +149,11 @@ namespace StudyAttendance
         }
 
 
+        /// <summary>
+        /// Performs a query with a single expected value from the database.
+        /// </summary>
+        /// <param name="query">Query string to be executed.</param>
+        /// <returns>Object that you'll need to cast to the expected data type. Null if an error occurred, CHECK YOUR NULLS.</returns>
         public object Scalar(string query)
         {
 
@@ -128,7 +167,10 @@ namespace StudyAttendance
             {
                 value = cmd.ExecuteScalar();
             }
-            catch { }
+            catch
+            {
+                return null;
+            }
 
             CloseConnection();
             return value;

@@ -46,8 +46,8 @@ namespace StudyAttendance
             ardunio = new ArduinoSerialComms(9600);
             ardunio.TagReceived += TagReceived;
 
-            //UNDONE: This
-            ShowAddStudent();
+            //UNDONE: Debug code
+            ShowAdminWindow();
 
         }
 
@@ -56,14 +56,8 @@ namespace StudyAttendance
         {
             //Load from the database, sort them by last name and then refresh the list
             students = database.GetAllStudents();
-            students.Sort(Compare);
+            students.Sort(Student.Compare);
             lstStudents.ItemsSource = students;
-        }
-
-
-        public int Compare(Student x, Student y)
-        {
-            return string.Compare(x.lastname, y.lastname);
         }
 
 
@@ -94,52 +88,6 @@ namespace StudyAttendance
         }
 
 
-        //void ProcessTag(byte[] tag)
-        //{
-
-
-
-        //    Debug.Write("Found tag: " + BitConverter.ToString(tag));
-
-        //    //Find the student in the database
-        //    uint uid = BitConverter.ToUInt32(tag, 0);
-
-        //    //Check for built in tags
-        //    //if (uid == 3392)
-        //    //{
-        //    //    //Admin mode! Stupid threading, show the window
-        //    //    //Dispatcher.BeginInvoke(new ThreadStart(() => Show()));
-        //    //    SendReply(ArduinoSerialComms.ADMIN_MSG_BYTE);
-        //    //    return;
-        //    //}
-
-
-        //    //Determine what was returned
-        //    bool added = false;
-        //    bool found = (student != null);
-        //    Debug.WriteLine($" = {found}");
-        //    if (found) added = database.AddAttendance(student, true);
-
-        //    //Send a message back to arduino
-        //    if (found && added)
-        //    {
-        //        SendReply(ArduinoSerialComms.GOOD_MSG_BYTE);
-        //        ShowPopup($"Welcome {student.ToString()}", Brushes.PaleGreen);
-        //    }
-        //    else if (found && !added)
-        //    {
-        //        SendReply(ArduinoSerialComms.DUPLICATE_MSG_BYTE);
-        //        ShowPopup($"You're already here {student.ToString()}", Brushes.PaleGreen);
-        //    }
-        //    else
-        //    {
-        //        SendReply(ArduinoSerialComms.BAD_MSG_BYTE);
-        //        ShowPopup($"Can't recognise FOB.", Brushes.OrangeRed);
-        //    }
-
-        //}
-
-
         void SendReply(byte message)
         {
             ardunio.SendData(new byte[] { message, ArduinoSerialComms.END_OF_PACKET_CHAR });
@@ -158,7 +106,7 @@ namespace StudyAttendance
         }
 
 
-        void ShowAddStudent()
+        void ShowAdminWindow()
         {
 
             Dispatcher.BeginInvoke(new Action(() =>
@@ -167,20 +115,12 @@ namespace StudyAttendance
                 //Remove the tag received event for this form
                 ardunio.TagReceived -= TagReceived;
 
-                AddStudent addStudent = new AddStudent(database, ardunio);
-                addStudent.Owner = this;
-                bool? result = addStudent.ShowDialog();
+                EditStudents adminWindow = new EditStudents(database, ardunio);
+                adminWindow.Owner = this;
+                bool? result = adminWindow.ShowDialog();
 
                 //Reattach the arduino event
                 ardunio.TagReceived += TagReceived;
-
-                //Check if we got a result for the adding
-                if (result.Value)
-                {
-                    ShowPopup("Student added!", Brushes.ForestGreen);
-                    LoadStudents();
-                }
-
 
             }));
         }

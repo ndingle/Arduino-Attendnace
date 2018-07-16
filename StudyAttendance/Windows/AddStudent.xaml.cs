@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,17 +23,43 @@ namespace StudyAttendance
 
         AttendanceDatabase database;
         ArduinoSerialComms arduino;
+        bool editMode = false;
+        Student student = null;
        
-        bool hasUID = false;
         uint currentUid = 0;
+        private static readonly Regex _regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
+        
 
-
-        public AddStudent(AttendanceDatabase database, ArduinoSerialComms arduino)
+        public AddStudent(AttendanceDatabase database, ArduinoSerialComms arduino, bool editStudent = false, Student student = null)
         {
             InitializeComponent();
             this.database = database;
             this.arduino = arduino;
             this.arduino.TagReceived += TagReceived;
+            editMode = editStudent;
+
+            //If we are editing, the setup the window
+            if (editMode)
+            {
+                this.student = student;
+                Title = "Edit student";
+                txbTitle.Text = "Edit student";
+                txtFirstname.Text = student.firstname;
+                txtLastname.Text = student.lastname;
+                txtOasisID.Text = student.oasisid.ToString();
+                txtFinishYear.Text = student.finishyear.ToString();
+                currentUid = student.uid;
+                btnSaveNext.IsEnabled = false;
+
+                //If we have a uid, then update the textblock
+                if (currentUid != 0)
+                {
+                    txbUID.Text = $"Tag will be set to {BitConverter.ToString(BitConverter.GetBytes(currentUid))}";
+                    txbUID.Foreground = Brushes.PaleGreen;
+                }
+
+            }
+
         }
 
 
@@ -46,14 +73,12 @@ namespace StudyAttendance
                 if (student != null)
                 {
                     txbUID.Text = $"Tag is already associated with {student.ToString()}";
-                    hasUID = false;
                     currentUid = 0;
                     txbUID.Foreground = Brushes.OrangeRed;
                 }
                 else
                 {
                     currentUid = uid;
-                    hasUID = true;
                     txbUID.Text = $"Tag will be set to {BitConverter.ToString(BitConverter.GetBytes(currentUid))}";
                     txbUID.Foreground = Brushes.PaleGreen;
                 }
@@ -67,14 +92,23 @@ namespace StudyAttendance
 
             //Ensure they filled in the fields first
             if (txtFirstname.Text.Trim().Length == 0 ||
-                txtLastname.Text.Trim().Length == 0 ||
-                !hasUID)
+                txtLastname.Text.Trim().Length == 0)
                 return;
 
-            Student newStudent = new Student(0, currentUid, txtFirstname.Text, txtLastname.Text);
+            Student newStudent;
+
+            if (editMode)
+            {
+                newStudent = new Student(student.id, currentUid, Convert.ToUInt32(txtOasisID.Text), txtFirstname.Text, txtLastname.Text, Convert.ToUInt16(txtFinishYear.Text), student.active);
+                DialogResult = database.EditStudent(newStudent);
+            }
+            else
+            {
+                newStudent = new Student(0, currentUid, Convert.ToUInt32(txtOasisID.Text), txtFirstname.Text, txtLastname.Text, Convert.ToUInt16(txtFinishYear.Text), true);
+                DialogResult = database.AddStudent(newStudent);
+            }
 
             //Return if it worked or not and close
-            DialogResult = database.AddStudent(newStudent);
             Close();
 
         }
@@ -84,11 +118,10 @@ namespace StudyAttendance
 
             //Ensure they filled in the fields first
             if (txtFirstname.Text.Trim().Length == 0 ||
-                txtLastname.Text.Trim().Length == 0 ||
-                !hasUID)
+                txtLastname.Text.Trim().Length == 0)
                 return;
 
-            Student newStudent = new Student(0, currentUid, txtFirstname.Text, txtLastname.Text);
+            Student newStudent = new Student(0, currentUid, Convert.ToUInt32(txtOasisID.Text), txtFirstname.Text, txtLastname.Text, Convert.ToUInt16(txtFinishYear.Text), true);
 
             //Return if it worked or not and close
             bool result = database.AddStudent(newStudent);
@@ -99,7 +132,8 @@ namespace StudyAttendance
             {
                 txtFirstname.Clear();
                 txtLastname.Clear();
-                hasUID = false;
+                txtFinishYear.Clear();
+                txtOasisID.Clear();
                 currentUid = 0;
                 txbUID.Text = "Tap FOB to set UID";
                 txbUID.Foreground = Brushes.OrangeRed;
@@ -108,10 +142,21 @@ namespace StudyAttendance
         }
 
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void txtOasisID_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            if (!hasUID)
-                DialogResult = null;
+            e.Handled = !IsTextAllowed(e.Text);
+        }
+
+
+        private static bool IsTextAllowed(string text)
+        {
+            return !_regex.IsMatch(text);
+        }
+
+
+        private void txtFinishYear_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !IsTextAllowed(e.Text);
         }
 
     }
