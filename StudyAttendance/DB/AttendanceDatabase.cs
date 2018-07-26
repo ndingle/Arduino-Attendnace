@@ -49,12 +49,37 @@ namespace StudyAttendance
 
 
         /// <summary>
+        /// Collects all the subjects in the database.
+        /// </summary>
+        /// <returns>A list of subjects</returns>
+        public List<Subject> GetAllSubjects()
+        {
+
+            List<Subject> results = new List<Subject>();
+            MySqlDataReader reader = db.Query("SELECT * FROM subjects");
+
+            while (reader.Read())
+            {
+                Subject subject = new Subject(reader.GetInt32("id"),
+                                              reader.GetString("name"));
+                results.Add(subject);
+            }
+
+            //Close your stuff mate
+            reader.Close();
+            db.CloseConnection();
+
+            return results;
+
+        }
+
+
+        /// <summary>
         /// Provides the ability to search for students using their uid.
         /// </summary>
         /// <param name="uid">Should be the FOB uid used to search for the student.</param>
         /// <returns>
-        /// True = they're alive and well.
-        /// False = check their pulse.
+        /// True = they're alive and well. False = check their pulse.
         /// </returns>
         public Student FindStudentByUID(uint uid)
         {
@@ -98,8 +123,7 @@ namespace StudyAttendance
         /// </summary>
         /// <param name="student">Uses the id to check for the student.</param>
         /// <returns>
-        /// True = they're here already!
-        /// False = not in... yet.
+        /// True = they're here already! False = not logged in... yet.
         /// </returns>
         public bool AttendanceExistsToday(Student student)
         {
@@ -117,21 +141,14 @@ namespace StudyAttendance
         /// Adds an entry into the Attendance table. 
         /// </summary>
         /// <param name="student">Uses the id value to insert the attendance record.</param>
-        /// <param name="oneEntryPerDay">Limits the number of attendance entries for this student to 1 per day.</param>
+        /// <param name="subjectid">ID of the subject that the user selected.</param>
         /// <returns>
-        /// True = you're good
-        /// False = no addy
+        /// True = you're good, False = no addy
         /// </returns>
-        public bool AddAttendance(Student student, bool oneEntryPerDay = true)
+        public bool AddAttendance(Student student, int subjectid)
         {
             //If we have one entry per day and it's not added, do that. Otherwise just add the entry
-            if ((oneEntryPerDay && AttendanceExistsToday(student) == false) || !oneEntryPerDay)
-            {
-                db.NonQuery($"INSERT INTO attendance(studentid) VALUES({student.id})");
-                return true;
-            }
-            else
-                return false;
+            return db.NonQuery($"INSERT INTO attendance(studentid, subjectid) VALUES({student.id}, {subjectid})");
         }
 
 

@@ -18,6 +18,11 @@
             <Setter Property="Padding" Value="5,5,5,5" />
         </Style>
 
+        <Style TargetType="Button">
+            <Setter Property="FontSize" Value="48" />
+            <Setter Property="Margin" Value="5" />
+        </Style>
+
         <Storyboard x:Key="ShowSubjects">
             <local:GridLengthAnimation
             BeginTime="0:0:0"
@@ -111,7 +116,20 @@
 
         </Grid>
 
-        <Grid x:Name="subjectGrid" Grid.Column="1" Grid.Row="0" Background="Red"/>
+        <Grid x:Name="subjectGrid" Grid.Column="1" Grid.Row="0">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+
+            <Grid.RowDefinitions>
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            
+        </Grid>
 
     </Grid>
 </Window>

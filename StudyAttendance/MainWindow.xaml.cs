@@ -29,6 +29,7 @@ namespace StudyAttendance
         ArduinoSerialComms ardunio;
 
         List<Student> students = new List<Student>();
+        Student loginStudent = null;
 
         Storyboard showStudentsColumn;
         Storyboard hideStudentsColumn;
@@ -53,6 +54,7 @@ namespace StudyAttendance
 
             //Setup the student list and sort it 
             LoadStudents();
+            LoadSubjects();
 
             //Setup the connection to the Arduino
             ardunio = new ArduinoSerialComms(9600);
@@ -90,6 +92,68 @@ namespace StudyAttendance
 
 
         /// <summary>
+        /// Collects subjects from the database and loads them into the grid
+        /// </summary>
+        void LoadSubjects()
+        {
+
+            List<Subject> subjects = database.GetAllSubjects();
+            int column = 0;
+            int row = 0;
+
+            foreach (var obj in subjects)
+            {
+
+                Subject subject = obj as Subject;
+
+                Button btn = new Button()
+                {
+                    Content = subject.ToString(),
+                    Tag = subject
+                };
+
+                btn.Click += SubjectButton_Click;
+
+                //Add button to the grid
+                subjectGrid.Children.Add(btn);
+                Grid.SetColumn(btn, column);
+                Grid.SetRow(btn, row);
+
+                column++;
+
+                //If we got past column count, then we add a new row and reset counters
+                if (column == subjectGrid.ColumnDefinitions.Count)
+                {
+                    subjectGrid.RowDefinitions.Add(new RowDefinition());
+                    row++;
+                    column = 0;
+                }
+
+            }
+
+        }
+
+
+        /// <summary>
+        /// Event handler used by the generated subject buttons
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void SubjectButton_Click(object sender, RoutedEventArgs e)
+        {
+
+            //Don't we all want to wrte something ugly!!! I Do.
+            int subjectid = ((sender as Button).Tag as Subject).id;
+
+            if (database.AddAttendance(loginStudent, subjectid))
+                ShowPopup($"Welcome {loginStudent.ToString()}", Brushes.PaleGreen);
+
+            ShowStudentSelection();
+            loginStudent = null;
+        }
+
+
+        /// <summary>
         /// The receiver event from the arduino
         /// </summary>
         /// <param name="uid">The UID received</param>
@@ -112,7 +176,7 @@ namespace StudyAttendance
         /// <summary>
         /// Starts the student grid animations
         /// </summary>
-        void showStudentSelection()
+        void ShowStudentSelection()
         {
             showStudentsColumn.Begin();
             hideSubjectsColumn.Begin();
@@ -123,7 +187,7 @@ namespace StudyAttendance
         /// The login function that will attempt to log in a user
         /// </summary>
         /// <param name="uid">The UID that will attempt to login</param>
-        void Login2(uint uid)
+        void Login(uint uid)
         {
 
             // Are they in the database?
@@ -131,15 +195,26 @@ namespace StudyAttendance
 
             //If we found them, then add them (if they haven't already signed in)
             bool found = (student != null);
-            bool added = false;
-            if (found) added = database.AddAttendance(student, true);
 
-            if (found && added)
-                ShowPopup($"Welcome {student.ToString()}", Brushes.PaleGreen);
-            else if (found && !added)
+            bool loggedIn = database.AttendanceExistsToday(student);
+
+            if (found && loggedIn)
                 ShowPopup($"You're already here {student.ToString()}", Brushes.PaleGreen);
             else if (!found)
                 ShowPopup($"FOB not registered.", Brushes.OrangeRed);
+            else
+            {
+                loginStudent = student;
+                ShowSubjectSelection();
+            }
+
+            //if (found) added = database.AddAttendance(student, true);
+            //if (found && added)
+            //    ShowPopup($"Welcome {student.ToString()}", Brushes.PaleGreen);
+            //else if (found && !added)
+            //    ShowPopup($"You're already here {student.ToString()}", Brushes.PaleGreen);
+            //else if (!found)
+            //    ShowPopup($"FOB not registered.", Brushes.OrangeRed);
 
         }
 
