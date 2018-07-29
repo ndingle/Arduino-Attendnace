@@ -10,14 +10,16 @@ namespace StudyAttendance
     {
 
         public int id { get; set; }
+        public uint position { get; set; }
         public string name { get; set; }
 
 
         public Subject() { }
 
-        public Subject(int id, string name)
+        public Subject(int id, uint position, string name)
         {
             this.id = id;
+            this.position = position;
             this.name = name;
         }
 

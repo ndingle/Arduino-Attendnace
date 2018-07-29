@@ -18,7 +18,13 @@
             <Setter Property="Padding" Value="5,5,5,5" />
         </Style>
 
-        <Style TargetType="Button">
+        <Style TargetType="Button" >
+            <Setter Property="FontSize" Value="48" />
+            <Setter Property="Margin" Value="5" />
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="FontSize" Value="48" />
             <Setter Property="Margin" Value="5" />
         </Style>
@@ -68,8 +74,8 @@
     <Grid>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="StudentsColumn" Width="1*" />
-            <ColumnDefinition x:Name="SubjectsColumn" Width="0*"/>
+            <ColumnDefinition x:Name="StudentsColumn" Width="0*" />
+            <ColumnDefinition x:Name="SubjectsColumn" Width="1*"/>
         </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
@@ -116,20 +122,28 @@
 
         </Grid>
 
-        <Grid x:Name="subjectGrid" Grid.Column="1" Grid.Row="0">
+        <ScrollViewer CanContentScroll="True" Grid.Row="0" Grid.Column="1">
+                
+            <Grid x:Name="subjectGrid">
 
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition />
-                <ColumnDefinition />
-                <ColumnDefinition />
-                <ColumnDefinition />
-            </Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
 
-            <Grid.RowDefinitions>
-                <RowDefinition />
-            </Grid.RowDefinitions>
-            
-        </Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="100"/>
+                    <RowDefinition Height="1*"/>
+                </Grid.RowDefinitions>
+
+                <Button x:Name="btnBack" Width="100" Click="btnBack_Click">Back</Button>
+                <TextBlock Grid.Column="1" Grid.Row="0" Grid.ColumnSpan="3">Select your subject</TextBlock>
+
+            </Grid>
+                
+        </ScrollViewer>
 
     </Grid>
 </Window>

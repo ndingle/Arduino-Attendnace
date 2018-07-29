@@ -23,6 +23,7 @@ namespace StudyAttendance
 
 
         private SerialPort _port;
+        private int _baud;
         private List<byte> _dataBuffer;
 
         public static byte END_OF_PACKET_CHAR = 10;
@@ -37,15 +38,15 @@ namespace StudyAttendance
         /// <param name="baud">The baud rate to connect at.</param>
         public ArduinoSerialComms(int baud)
         {
-            Init(baud);
+            _baud = baud;
+            Connect();
         }
 
 
         /// <summary>
         /// Used as the initial connect from the constructor.
         /// </summary>
-        /// <param name="baud">The baud rate to connect at.</param>
-        void Init(int baud)
+        public void Connect()
         {
 
             _dataBuffer = new List<byte>();
@@ -53,7 +54,7 @@ namespace StudyAttendance
             if (comPort == "")
                 return;
 
-            OpenPort(comPort, baud);
+            OpenPort(comPort, _baud);
 
         }
 

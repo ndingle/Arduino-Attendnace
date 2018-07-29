@@ -27,22 +27,26 @@ namespace StudyAttendance
 
             MySqlDataReader reader = db.Query(q);
 
-
-            while (reader.Read())
+            if (reader != null)
             {
-                Student newStudent = new Student(reader.GetInt32("id"),
-                                                 reader.GetUInt32("uid"),
-                                                 reader.GetUInt32("oasisid"),
-                                                 reader.GetString("firstname"),
-                                                 reader.GetString("lastname"),
-                                                 reader.GetUInt16("finishyear"),
-                                                 reader.GetBoolean("active"));
-                results.Add(newStudent);
+
+                while (reader.Read())
+                {
+                    Student newStudent = new Student(reader.GetUInt32("id"),
+                                                     reader.GetUInt32("uid"),
+                                                     reader.GetUInt32("oasisid"),
+                                                     reader.GetString("firstname"),
+                                                     reader.GetString("lastname"),
+                                                     reader.GetUInt16("finishyear"),
+                                                     reader.GetBoolean("active"));
+                    results.Add(newStudent);
+                }
+
+                reader.Close();
+
             }
 
-            reader.Close();
             db.CloseConnection();
-
             return results;
 
         }
@@ -56,17 +60,24 @@ namespace StudyAttendance
         {
 
             List<Subject> results = new List<Subject>();
-            MySqlDataReader reader = db.Query("SELECT * FROM subjects");
+            MySqlDataReader reader = db.Query("SELECT * FROM subjects ORDER BY position");
 
-            while (reader.Read())
+            if (reader != null)
             {
-                Subject subject = new Subject(reader.GetInt32("id"),
-                                              reader.GetString("name"));
-                results.Add(subject);
+
+                while (reader.Read())
+                {
+                    Subject subject = new Subject(reader.GetInt32("id"),
+                                                  reader.GetUInt32("position"),
+                                                  reader.GetString("name"));
+                    results.Add(subject);
+                }
+
+                //Close your stuff mate
+                reader.Close();
+
             }
 
-            //Close your stuff mate
-            reader.Close();
             db.CloseConnection();
 
             return results;
@@ -90,7 +101,40 @@ namespace StudyAttendance
             if (reader != null && reader.HasRows)
             {
                 reader.Read();
-                result = new Student(reader.GetInt32("id"),
+                result = new Student(reader.GetUInt32("id"),
+                                    reader.GetUInt32("uid"),
+                                    reader.GetUInt32("oasisid"),
+                                    reader.GetString("firstname"),
+                                    reader.GetString("lastname"),
+                                    reader.GetUInt16("finishyear"),
+                                    reader.GetBoolean("active"));
+
+            }
+
+            reader.Close();
+            db.CloseConnection();
+            return result;
+
+        }
+
+
+        /// <summary>
+        /// Provides the ability to search for students using their id.
+        /// </summary>
+        /// <param name="id">The id of the student.</param>
+        /// <returns>
+        /// True = they're alive and well. False = check their pulse.
+        /// </returns>
+        public Student FindStudentByID(uint id)
+        {
+
+            MySqlDataReader reader = db.Query($"SELECT * FROM students WHERE id={id}");
+            Student result = null;
+
+            if (reader != null && reader.HasRows)
+            {
+                reader.Read();
+                result = new Student(reader.GetUInt32("id"),
                                     reader.GetUInt32("uid"),
                                     reader.GetUInt32("oasisid"),
                                     reader.GetString("firstname"),
@@ -206,7 +250,7 @@ namespace StudyAttendance
         /// <param name="id">ID of the student</param>
         /// <param name="value">Set the student acitve or not.</param>
         /// <returns></returns>
-        public bool SetActive(int id, bool value)
+        public bool SetActive(uint id, bool value)
         {
             return db.NonQuery($"UPDATE students SET active={value} WHERE id={id}");
         }

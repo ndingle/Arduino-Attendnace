@@ -6,7 +6,7 @@ namespace StudyAttendance
     {
 
         
-        public int id { get; set; }
+        public uint id { get; set; }
         public uint uid { get; set; }
         [ExcelColumn("oasis id")]
         public uint oasisid { get; set; }
@@ -38,7 +38,7 @@ namespace StudyAttendance
         public Student() { }
 
 
-        public Student(int id, 
+        public Student(uint id, 
                        uint uid, 
                        uint oasisid, 
                        string firstname, 

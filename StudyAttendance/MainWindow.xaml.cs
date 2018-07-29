@@ -1,23 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+
 
 namespace StudyAttendance
 {
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -25,12 +17,17 @@ namespace StudyAttendance
     {
 
 
+        //Main variables for database and arduino communication
         AttendanceDatabase database = new AttendanceDatabase();
-        ArduinoSerialComms ardunio;
+        ArduinoSerialComms arduino;
+        Timer arduinoTimer;
 
+        //Main variables, the list of students and the current student to log in
         List<Student> students = new List<Student>();
         Student loginStudent = null;
 
+        //TODO: Consider making this nicer
+        //Variables used for the animation of the grid columns
         Storyboard showStudentsColumn;
         Storyboard hideStudentsColumn;
         Storyboard showSubjectsColumn;
@@ -57,8 +54,14 @@ namespace StudyAttendance
             LoadSubjects();
 
             //Setup the connection to the Arduino
-            ardunio = new ArduinoSerialComms(9600);
-            ardunio.TagReceived += TagReceived;
+            arduino = new ArduinoSerialComms(9600);
+            arduino.TagReceived += TagReceived;
+
+            //Setup the timer
+            arduinoTimer = new Timer(1000);
+            arduinoTimer.Elapsed += CheckArduinoStatus;
+            arduinoTimer.AutoReset = true;
+            arduinoTimer.Start();
 
             //UNDONE: Debug code
             //ShowAdminWindow();
@@ -75,8 +78,16 @@ namespace StudyAttendance
 
             //Log them in then
             Student selectedStudent = (Student)lstStudents.SelectedItem;
-            Login(selectedStudent.uid);
+            Login(selectedStudent);
 
+        }
+
+
+        private void btnBack_Click(object sender, RoutedEventArgs e)
+        {
+            //Reset the subject selection
+            loginStudent = null;
+            ShowStudentSelection();
         }
 
 
@@ -99,16 +110,21 @@ namespace StudyAttendance
 
             List<Subject> subjects = database.GetAllSubjects();
             int column = 0;
-            int row = 0;
+            int row = 1;
 
-            foreach (var obj in subjects)
+            foreach (Subject subject in subjects)
             {
-
-                Subject subject = obj as Subject;
-
-                Button btn = new Button()
+                
+                var textBlock = new TextBlock()
                 {
-                    Content = subject.ToString(),
+                    Text = subject.ToString(),
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 48
+                };
+
+                var btn = new Button()
+                {
+                    Content = textBlock,
                     Tag = subject
                 };
 
@@ -124,7 +140,9 @@ namespace StudyAttendance
                 //If we got past column count, then we add a new row and reset counters
                 if (column == subjectGrid.ColumnDefinitions.Count)
                 {
-                    subjectGrid.RowDefinitions.Add(new RowDefinition());
+                    var rowDefinition = new RowDefinition();
+                    rowDefinition.Height = new GridLength(1, GridUnitType.Star);
+                    subjectGrid.RowDefinitions.Add(rowDefinition);
                     row++;
                     column = 0;
                 }
@@ -147,9 +165,12 @@ namespace StudyAttendance
 
             if (database.AddAttendance(loginStudent, subjectid))
                 ShowPopup($"Welcome {loginStudent.ToString()}", Brushes.PaleGreen);
+            else
+                ShowPopup("Something happened...", Brushes.Aqua);
 
             ShowStudentSelection();
             loginStudent = null;
+
         }
 
 
@@ -159,7 +180,13 @@ namespace StudyAttendance
         /// <param name="uid">The UID received</param>
         void TagReceived(uint uid)
         {
-            Login(uid);
+            Student student = database.FindStudentByUID(uid);
+
+            //Run on the main thread since this is an async and its causing me a bloody headache with random catches...
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                Login(student);
+            }));
         }
 
 
@@ -186,12 +213,9 @@ namespace StudyAttendance
         /// <summary>
         /// The login function that will attempt to log in a user
         /// </summary>
-        /// <param name="uid">The UID that will attempt to login</param>
-        void Login(uint uid)
+        /// <param name="student">The student we will attempt to login</param>
+        void Login(Student student)
         {
-
-            // Are they in the database?
-            Student student = database.FindStudentByUID(uid);
 
             //If we found them, then add them (if they haven't already signed in)
             bool found = (student != null);
@@ -207,14 +231,6 @@ namespace StudyAttendance
                 loginStudent = student;
                 ShowSubjectSelection();
             }
-
-            //if (found) added = database.AddAttendance(student, true);
-            //if (found && added)
-            //    ShowPopup($"Welcome {student.ToString()}", Brushes.PaleGreen);
-            //else if (found && !added)
-            //    ShowPopup($"You're already here {student.ToString()}", Brushes.PaleGreen);
-            //else if (!found)
-            //    ShowPopup($"FOB not registered.", Brushes.OrangeRed);
 
         }
 
@@ -246,14 +262,33 @@ namespace StudyAttendance
             {
 
                 //Remove the tag received event for this form
-                ardunio.TagReceived -= TagReceived;
+                arduino.TagReceived -= TagReceived;
 
-                EditStudents adminWindow = new EditStudents(database, ardunio);
+                EditStudents adminWindow = new EditStudents(database, arduino);
                 adminWindow.Owner = this;
                 bool? result = adminWindow.ShowDialog();
 
                 //Reattach the arduino event
-                ardunio.TagReceived += TagReceived;
+                arduino.TagReceived += TagReceived;
+
+            }));
+
+        }
+
+
+        /// <summary>
+        /// Used by the timer class to ensure the ardunio stays
+        /// connected and will attempt to reestablish a connection.
+        /// </summary>
+        void CheckArduinoStatus(Object source, ElapsedEventArgs e)
+        {
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                
+                //Check if arduino is still connected
+                if (!arduino.IsOpen())
+                    arduino.Connect();
 
             }));
 
